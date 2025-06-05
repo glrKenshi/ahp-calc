@@ -14,8 +14,9 @@ const tasksSlice = createSlice({
           name,
           criteria,
           items: [],
-          criteriaComparisons: {},
-          itemComparisons: {}
+          criteriaComparisons: [],
+          itemComparisons: {},
+          analysisCompleted: false 
         }
       })
     },
@@ -43,8 +44,16 @@ const tasksSlice = createSlice({
         task.itemComparisons = value
       }
     },
-    
+
     removeTask: tasksAdapter.removeOne,
+
+    setAnalysisCompleted: (state, action) => {
+      const { taskId, completed } = action.payload;
+      const task = state.entities[taskId];
+      if (task) {
+        task.analysisCompleted = completed;
+      }
+    },
   }
 });
 
@@ -53,7 +62,8 @@ export const {
   setItemsToTask,
   setCriteriaComparison,
   setItemComparison,
-  removeTask
+  removeTask,
+  setAnalysisCompleted
 } = tasksSlice.actions;
 
 export const {

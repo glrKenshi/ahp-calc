@@ -1,250 +1,258 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   CssBaseline,
   AppBar,
   Toolbar,
   Typography,
   Button,
-  Modal,
-  Box,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  IconButton,
-  Stack,
+  Box,    
   Card,
-  CardContent,
+  CardContent,  
   CardActions,
   Tooltip,
   Grid,
   List,
   ListItem,
-  ListItemText
-} from '@mui/material';
+  ListItemText,
+  IconButton,
+  Container
+} from '@mui/material'; 
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-
-import { addTask, selectAllTasks, removeTask } from './slices/tusksSlice';
+import DoneIcon from '@mui/icons-material/Done';
+import { green } from '@mui/material/colors';
 import { useDispatch, useSelector } from 'react-redux';
-
-const modalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 600,
-  bgcolor: 'background.paper',
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 2,
-};
+import { selectAllTasks, removeTask } from './slices/tasksSlice';
+import CreateTaskModal from './components/CreateTaskModal';
+import CreateItemModal from './components/CreateItemModal';
+import AnalysisModal from './components/AnalysisModal';
+import AhpResults from './components/AhpResults';
+import LoginModal from './components/LoginModal';
 
 function App() {
-  const [open, setOpen] = useState(false);
-  const [taskName, setTaskName] = useState('');
-  const [criteria, setCriteria] = useState([
-    { name: '', importance: 1 }, 
-    { name: '', importance: 1 }
-  ]);
+  const [openCriteriaModal, setOpenCriteriaModal] = useState(false);
+  const [openItemsModal, setOpenItemsModal] = useState(false);
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  
+  const dispatch = useDispatch();
+  const tasks = useSelector(selectAllTasks);
+  const currentTask = useSelector(state => 
+    currentTaskId ? state.tasks.entities[currentTaskId] : null
+  );
 
-  const dispatch = useDispatch()
-  const tasks = useSelector(selectAllTasks)
-
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => {
-    setOpen(false);
-    setTaskName('');
-    setCriteria([{ name: '', importance: 1 }, { name: '', importance: 1 }]);
-  };
-
-  const handleAddCriteria = () => {
-    setCriteria([...criteria, { name: '', importance: 1 }]); // Новые критерии с важностью 1
-  };
-
-  const handleCriteriaChange = (index, field, value) => {
-    const newCriteria = [...criteria];
-    newCriteria[index][field] = value;
-    setCriteria(newCriteria);
-  };
-
-  const handleRemoveCriteria = (index) => {
-    if (criteria.length > 2) {
-      const newCriteria = [...criteria];
-      newCriteria.splice(index, 1);
-      setCriteria(newCriteria);
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('isAuthenticated');
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true);
     }
+  }, []);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    localStorage.setItem('isAuthenticated', 'true');
   };
 
-  const handleCreateTask = () => {
-    const criteriaArr = criteria.map(el => el.name)
-    dispatch(addTask({
-      name : taskName,
-      criteria : criteriaArr
-    }))
-
-    handleClose();
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('isAuthenticated');
   };
+
+  const onOpenCriteriaModal = () => setOpenCriteriaModal(true);
+  const onCloseCriteriaModal = () => setOpenCriteriaModal(false);
+
+  const onOpenItemsModal = () => setOpenItemsModal(true);
+  const onCloseItemsModal = () => setOpenItemsModal(false);
+
+  const handleOpenAnalysis = (taskId) => {
+    setCurrentTaskId(taskId);
+    setAnalysisModalOpen(true);
+  };
+
+  const handleCloseAnalysis = () => {
+    setAnalysisModalOpen(false);
+    setCurrentTaskId(null);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <CssBaseline>
+        <AppBar position="static">
+          <Container maxWidth="lg">
+            <Toolbar>
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                Task Manager
+              </Typography>
+              <Button color="inherit" onClick={() => setLoginModalOpen(true)}>
+                Войти
+              </Button>
+            </Toolbar>
+          </Container>
+        </AppBar>
+
+        <Box sx={{ 
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '80vh',
+          flexDirection: 'column'
+        }}>
+          <Typography variant="h4" sx={{ mb: 2 }}>
+            Добро пожаловать
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 4 }}>
+            Пожалуйста, авторизуйтесь для продолжения
+          </Typography>
+          <Button 
+            variant="contained" 
+            size="large"
+            onClick={() => setLoginModalOpen(true)}
+          >
+            Войти в систему
+          </Button>
+        </Box>
+
+        <LoginModal 
+          open={loginModalOpen}
+          onClose={() => setLoginModalOpen(false)}
+          onLogin={handleLogin}
+        />
+      </CssBaseline>
+    );
+  }
 
   return (
     <CssBaseline>
       <div className="App">
         <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Task Manager
-            </Typography>
-            <Button
-              color="inherit"
-              startIcon={<AddIcon />}
-              onClick={handleOpen}
-            >
-              Новая задача
-            </Button>
-          </Toolbar>
+          <Container>
+            <Toolbar>
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                Task Manager
+              </Typography>
+              <Button
+                color="inherit"
+                startIcon={<AddIcon />}
+                onClick={onOpenCriteriaModal}
+              >
+                Новая задача
+              </Button>
+              <Button color="inherit" onClick={handleLogout} sx={{ ml: 2 }}>
+                Выйти
+              </Button>
+            </Toolbar>
+          </Container>
         </AppBar>
 
         <Box sx={{ maxWidth: 800, mx: 'auto', p: 2 }}>
           {tasks.map(task => (
-            <Card sx={{ position: 'relative', minWidth: 275, mb: 2 }}>
-   
-              <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-                <Tooltip title="Удалить задачу" arrow>
-                  <IconButton
-                    aria-label="delete"
-                    onClick={() => dispatch(removeTask(task.id))}
-                    sx={{
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 0, 0, 0.1)'
-                      }
-                    }}
-                  >
-                    <CloseIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+            <div key={task.id}>
+              <Card sx={{ position: 'relative', minWidth: 275, mb: 2 }}>
+                <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
+                  <Tooltip title="Удалить задачу" arrow>
+                    <IconButton
+                      aria-label="delete"
+                      onClick={() => dispatch(removeTask(task.id))}
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 0, 0, 0.1)'
+                        }
+                      }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
 
-              <CardContent>
-                <Typography variant="h5" component="div" gutterBottom>
-                  {task.name}
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Typography variant="subtitle1" color="text.secondary">
-                      Критерии:
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>
+                      {task.name}
                     </Typography>
-                    <List dense>
-                      {task.criteria.map((item, index) => (
-                        <ListItem key={index} sx={{ py: 0 }}>
-                          <ListItemText primary={`• ${item}`} />
-                        </ListItem>
-                      ))}
-                    </List>
+                    {task.analysisCompleted && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 10, color: green[500] }}>
+                        <DoneIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        <Typography variant="body2">
+                          Анализ завершен 
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Критерии:
+                      </Typography>
+                      <List dense>
+                        {task.criteria.map((item, index) => (
+                          <ListItem key={index} sx={{ py: 0 }}>
+                            <ListItemText primary={`• ${item}`} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Альтернативы:
+                      </Typography>
+                      <List dense>
+                        {task.items.map((item, index) => (
+                          <ListItem key={index} sx={{ py: 0 }}>
+                            <ListItemText primary={`• ${item}`} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Grid>
                   </Grid>
-                </Grid>
-              </CardContent>
-          
-              <CardActions sx={{ justifyContent: 'flex-end' }}>
-                <Button
-                  size="small"
-                  // onClick={onDetailsClick}
-                  sx={{ mr: 1, mb: 1 }}
-                >
-                  Подробнее
-                </Button>
-              </CardActions>
-            </Card>
+                </CardContent>
+                <CardActions sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Button
+                    size="small"
+                    startIcon={<AddIcon />}
+                    sx={{ ml: 1, mb: 1 }}
+                    onClick={onOpenItemsModal}
+                  >
+                    Добавить альтернативы
+                  </Button>
+              
+                  <Button
+                    size="small"
+                    sx={{ mr: 1, mb: 1 }}
+                    onClick={() => handleOpenAnalysis(task.id)}
+                    disabled={task.criteria.length < 2 || task.items.length < 2}
+                  >
+                    Провести анализ
+                  </Button>
+                </CardActions>
+
+                {task.analysisCompleted && <AhpResults task={task} />}
+              </Card>
+
+              <CreateItemModal 
+                open={openItemsModal} 
+                onClose={onCloseItemsModal} 
+                taskName={task.name}
+                taskId={task.id}
+              />
+            </div>
           ))}
         </Box>
 
-        <Modal
-          open={open}
-          onClose={handleClose}
-          aria-labelledby="modal-modal-title"
-          aria-describedby="modal-modal-description"
-        >
-          <Box sx={modalStyle}>
-            <Typography id="modal-modal-title" variant="h6" component="h2" mb={3}>
-              Создание новой задачи
-            </Typography>
-      
-            <TextField
-              fullWidth
-              label="Введите название задачи"
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-              sx={{ mb: 3 }}
-            />
-      
-            <Typography variant="subtitle1" gutterBottom>
-              Критерии оценки:
-            </Typography>
-      
-            <Stack spacing={2} mb={3}>
-              {criteria.map((criterion, index) => (
-                <Box key={index} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <TextField
-                    fullWidth
-                    label={`Критерий ${index + 1}`}
-                    value={criterion.name}
-                    onChange={(e) => handleCriteriaChange(index, 'name', e.target.value)}
-                  />
-      
-                  <FormControl sx={{ minWidth: 180 }}>
-                    <InputLabel>Степень важности</InputLabel>
-                    <Select
-                      value={criterion.importance}
-                      label="Степень важности"
-                      onChange={(e) => handleCriteriaChange(index, 'importance', e.target.value)}
-                    >
-                      {Array.from({ length: 9 }, (_, i) => i + 1).map((num) => (
-                        <MenuItem key={num} value={num}>{num}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-      
-                  {criteria.length > 2 && (
-                    <IconButton
-                      color="error"
-                      onClick={() => handleRemoveCriteria(index)}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
-              ))}
-            </Stack>
-      
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={handleAddCriteria}
-              sx={{ mb: 3 }}
-            >
-              Добавить критерий
-            </Button>
-      
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 2 }}>
-              <Button
-                variant="contained"
-                onClick={handleCreateTask}
-                disabled={!taskName.trim() || criteria.some(c => !c.name.trim())}
-              >
-                Создать задачу
-              </Button>
-      
-              <Button
-                variant="outlined"
-                startIcon={<CloseIcon />}
-                onClick={handleClose}
-              >
-                Закрыть
-              </Button>
-            </Box>
-          </Box>
-        </Modal>
-
+        <CreateTaskModal 
+          open={openCriteriaModal} 
+          onClose={onCloseCriteriaModal} 
+        />
+        
+        {currentTask && (
+          <AnalysisModal
+            open={analysisModalOpen}
+            onClose={handleCloseAnalysis}
+            task={currentTask}
+            dispatch={dispatch}
+          />
+        )}
       </div>
     </CssBaseline>
   );
